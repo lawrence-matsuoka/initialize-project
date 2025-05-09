@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Prompt for project name if not given
+if [ -z "$1" ]; then
+    read -p "Enter project name: " PROJECT_NAME
+else
+    PROJECT_NAME="$1"
+fi
+
+PROJECT_DIR="$HOME/projects/$PROJECT_NAME"
+
+# Prompt for language
+echo "Select project language:"
+select LANGUAGE in "C/C++" "Python" "Go"; do
+    case $LANGUAGE in
+        "C/C++") LANG="cpp"; break ;;
+        "Python") LANG="python"; break ;;
+        "Go") LANG="go"; break ;;
+        *) echo "Invalid option";;
+    esac
+done
+
+# Create project directory
+mkdir -p "$PROJECT_DIR"
+
+# Conditionally copy .clang-format
+if [ "$LANG" == "cpp" ]; then
+    if [ ! -f .clang-format ]; then
+        echo "Warning: .clang-format not found in current directory. Skipping copy."
+    else
+        cp .clang-format "$PROJECT_DIR/"
+    fi
+fi
+
+# Create shell.nix
+cat > "$PROJECT_DIR/shell.nix" <<EOF
+{ pkgs ? import <nixpkgs> { } }:
+
+pkgs.mkShell 
+{
+  nativeBuildInputs = with pkgs; [
+EOF
+# C/C++
+if [ "$LANG" == "cpp" ]; then
+    cat >> "$PROJECT_DIR/shell.nix" <<EOF
+    clang
+    clang-tools
+    cmake
+    gcc
+EOF
+# Python
+elif [ "$LANG" == "python" ]; then
+    cat >> "$PROJECT_DIR/shell.nix" <<EOF
+    python3
+    python3Packages.pip
+EOF
+# Go
+elif [ "$LANG" == "go" ]; then
+    cat >> "$PROJECT_DIR/shell.nix" <<EOF
+    go
+EOF
+fi
+
+cat >> "$PROJECT_DIR/shell.nix" <<EOF
+  ];
+}
+EOF
+
+# Create README.md
+cat > "$PROJECT_DIR/README.md" <<EOF
+# $PROJECT_NAME
+
+Language: $LANG
+
+## Setup
+
+This project uses Nix and \`shell.nix\` to manage dependencies.
+EOF
+
+# Initialize Git
+cd "$PROJECT_DIR"
+git init > /dev/null
+
+echo "'$PROJECT_NAME' initialized as a $LANG project."
+
