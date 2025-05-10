@@ -60,6 +60,7 @@ EOF
 elif [ "$LANG" == "go" ]; then
     cat >> "$PROJECT_DIR/shell.nix" <<EOF
     go
+    delve
 EOF
 fi
 
